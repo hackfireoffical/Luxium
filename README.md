@@ -2,67 +2,50 @@
 
 **Stunning visuals. Near-vanilla performance.**
 
-Luxium is a client-side Minecraft mod that brings cinematic lighting and an otherworldly night sky without the usual shader tax.
+High-performance client-side visual mod focused on beautiful night skies while targeting **stable 60 FPS on Redmi Note 12s**.
 
-## Performance Target
+## Target
 
-**Primary device: Redmi Note 12s (Helio G88 / Mali-G52)**  
-**Goal: Stable 60 FPS**
+- **Minecraft**: 1.20.1
+- **Loader**: Fabric
+- **Device goal**: Redmi Note 12s (Helio G88 / Mali-G52) → stable 60 FPS
 
-All visual features are designed and tuned with this weak mobile GPU in mind first.
+## Features (current)
 
-### Current performance choices:
-- Only **1600 stars** (static VertexBuffer, built once)
-- Maximum **3 comets** at once
+- Dense but cheap star field (1400 stars, static buffer)
+- Large Milky Way band
+- Smaller tilted Andromeda galaxy
+- Bright blue-white comets (max 3)
+- Completely disabled during daytime (zero cost)
+
+## Performance Optimizations
+
+- Only 1400 stars
+- Max 3 comets
+- Static `VertexBuffer` for stars (built once)
+- No per-frame allocations in hot path
 - Galaxies = only 2 simple textured quads
-- No per-frame allocations in the hot path
-- Custom sky only active at night
-- Extremely cheap star + comet rendering
-
-## Vision
-
-### Night Sky
-- Deep navy/blue night sky
-- Dense but performance-friendly star field
-- **Large bright Milky Way**
-- **Smaller tilted Andromeda**
-- Bright blue-white comets with clean trails
-
-### Lighting & Shadows (planned)
-- Soft god rays
-- Very low-resolution soft shadows (biggest performance win)
-
-## Current Status
-
-**First optimized sky version is live.**
-
-- Dense procedural stars (1600)
-- Large Milky Way band (needs texture)
-- Smaller Andromeda (needs texture)
-- Bright comets (max 3)
-- Heavily optimized for Redmi Note 12s
-
-### Roadmap
-
-- [x] Repository + Fabric project
-- [x] Performance-first sky renderer (stars + Milky Way + Andromeda + comets)
-- [ ] Add real galaxy textures
-- [ ] Better sky gradient
-- [ ] Low-res soft shadows
-- [ ] God rays (cheap version)
-- [ ] Config screen with quality presets (Performance / Balanced)
+- Sky rendering fully skipped during day
 
 ## Building
 
+### Locally
 ```bash
-./gradlew build
+gradle build
 ```
 
-### Sky textures
-Put these in `src/main/resources/assets/luxium/textures/sky/`:
+### GitHub Actions
+Every push to `main` automatically builds the mod for **1.20.1 Fabric**.
 
-- `milky_way.png`
-- `andromeda.png`
+You can also trigger it manually:
+**Actions → Build Luxium (1.20.1 Fabric) → Run workflow**
+
+The built jar will appear in the Actions artifacts (`luxium-1.20.1`).
+
+## Project Structure
+
+- `SkyRenderer` – performance-first custom night sky
+- Ready for low-res soft shadows and god rays next
 
 ## License
 
@@ -70,4 +53,4 @@ MIT
 
 ---
 
-*Luxium – light, redefined. Built for 60 FPS on real devices.*
+*Luxium – light, redefined. Built for real devices.*
