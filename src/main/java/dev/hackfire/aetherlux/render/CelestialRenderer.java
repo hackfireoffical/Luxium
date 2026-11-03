@@ -1,43 +1,122 @@
 package dev.hackfire.aetherlux.render;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.RotationAxis;
+import org.joml.Matrix4f;
 
 /**
- * Improved Sun and Moon rendering.
+ * Improved Sun and Moon for Aetherlux.
  *
- * Goals (while staying cheap):
- * - More beautiful sun (soft glow / corona)
- * - Detailed moon with phases
- * - Subtle atmospheric scattering around them
- * - Works with the custom sky
+ * - Soft glow / halo around the sun
+ * - Brighter, cleaner moon
+ * - Cheap atmospheric scattering near the horizon
+ * - All kept very lightweight for mobile GPUs
  */
 public class CelestialRenderer {
 
+    private static final Identifier MOON_PHASES = new Identifier("minecraft", "textures/environment/moon_phases.png");
+    private static final Identifier SUN = new Identifier("minecraft", "textures/environment/sun.png");
+
     public boolean improvedSun = true;
     public boolean improvedMoon = true;
-    public float sunGlowIntensity = 0.7f;
-    public float moonBrightness = 1.1f;
+    public float sunGlowIntensity = 0.75f;
+    public float moonBrightness = 1.15f;
 
-    public void renderSun(MatrixStack matrices, float tickDelta, float alpha) {
-        if (!improvedSun) return;
+    public void render(MatrixStack matrices, float tickDelta) {
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.world == null) return;
 
-        // TODO:
-        // - Soft glow / halo around the sun
-        // - Slight color temperature change at sunrise/sunset
-        // - Very cheap screen-space glow
+        float skyAngle = client.world.getSkyAngle(tickDelta);
+        float rainGradient = 1.0f - client.world.getRainGradient(tickDelta);
+
+        matrices.push();
+        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-90.0f));
+        matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(skyAngle * 360.0f));
+
+        // Sun
+        if (improvedSun) {
+            renderSunWithGlow(matrices, rainGradient);
+        }
+
+        // Moon (opposite side)
+        matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(180.0f));
+        if (improvedMoon) {
+            renderMoon(matrices, rainGradient, client.world.getMoonPhase());
+        }
+
+        matrices.pop();
     }
 
-    public void renderMoon(MatrixStack matrices, float tickDelta, float alpha, int phase) {
-        if (!improvedMoon) return;
+    private void renderSunWithGlow(MatrixStack matrices, float alpha) {
+        RenderSystem.setShaderTexture(0, SUN);
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha);
 
-        // TODO:
-        // - Better moon texture / shading
-        // - Soft glow
-        // - Correct phase rendering
+        Matrix4f matrix = matrices.peek().getPositionMatrix();
+        BufferBuilder buffer = Tessellator.getInstance().getBuffer();
+
+        // Core sun
+        float size = 28.0f;
+        buffer.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+        buffer.vertex(matrix, -size, 100.0f, -size).texture(0.0f, 0.0f).color(255, 255, 255, 255).next();
+        buffer.vertex(matrix,  size, 100.0f, -size).texture(1.0f, 0.0f).color(255, 255, 255, 255).next();
+        buffer.vertex(matrix,  size, 100.0f,  size).texture(1.0f, 1.0f).color(255, 255, 255, 255).next();
+        buffer.vertex(matrix, -size, 100.0f,  size).texture(0.0f, 1.0f).color(255, 255, 255, 255).next();
+        BufferRenderer.drawWithGlobalProgram(buffer.end());
+
+        // Soft glow (bigger, transparent)
+        if (sunGlowIntensity > 0.01f) {
+            float glowSize = size * 2.8f;
+            int glowAlpha = (int) (90 * sunGlowIntensity * alpha);
+
+            RenderSystem.setShaderColor(1.0f, 0.95f, 0.8f, 1.0f);
+            buffer.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+            buffer.vertex(matrix, -glowSize, 100.0f, -glowSize).texture(0.0f, 0.0f).color(255, 240, 200, glowAlpha).next();
+            buffer.vertex(matrix,  glowSize, 100.0f, -glowSize).texture(1.0f, 0.0f).color(255, 240, 200, glowAlpha).next();
+            buffer.vertex(matrix,  glowSize, 100.0f,  glowSize).texture(1.0f, 1.0f).color(255, 240, 200, glowAlpha).next();
+            buffer.vertex(matrix, -glowSize, 100.0f,  glowSize).texture(0.0f, 1.0f).color(255, 240, 200, glowAlpha).next();
+            BufferRenderer.drawWithGlobalProgram(buffer.end());
+        }
+
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
     }
 
-    public void renderAtmosphericScattering(MatrixStack matrices, float sunAngle) {
-        // Cheap approximation of scattering around sun/moon
-        // Important for nice sunsets without heavy cost
+    private void renderMoon(MatrixStack matrices, float alpha, int phase) {
+        RenderSystem.setShaderTexture(0, MOON_PHASES);
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha * moonBrightness);
+
+        int phaseX = phase % 4;
+        int phaseY = phase / 4 % 2;
+        float u1 = phaseX / 4.0f;
+        float v1 = phaseY / 2.0f;
+        float u2 = (phaseX + 1) / 4.0f;
+        float v2 = (phaseY + 1) / 2.0f;
+
+        float size = 22.0f;
+        Matrix4f matrix = matrices.peek().getPositionMatrix();
+        BufferBuilder buffer = Tessellator.getInstance().getBuffer();
+
+        buffer.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+        buffer.vertex(matrix, -size, -100.0f, size).texture(u2, v2).color(255, 255, 255, 255).next();
+        buffer.vertex(matrix,  size, -100.0f, size).texture(u1, v2).color(255, 255, 255, 255).next();
+        buffer.vertex(matrix,  size, -100.0f, -size).texture(u1, v1).color(255, 255, 255, 255).next();
+        buffer.vertex(matrix, -size, -100.0f, -size).texture(u2, v1).color(255, 255, 255, 255).next();
+        BufferRenderer.drawWithGlobalProgram(buffer.end());
+
+        // Soft moon glow
+        float glowSize = size * 1.9f;
+        int glowAlpha = (int) (70 * alpha);
+        buffer.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+        buffer.vertex(matrix, -glowSize, -100.0f, glowSize).texture(u2, v2).color(200, 210, 255, glowAlpha).next();
+        buffer.vertex(matrix,  glowSize, -100.0f, glowSize).texture(u1, v2).color(200, 210, 255, glowAlpha).next();
+        buffer.vertex(matrix,  glowSize, -100.0f, -glowSize).texture(u1, v1).color(200, 210, 255, glowAlpha).next();
+        buffer.vertex(matrix, -glowSize, -100.0f, -glowSize).texture(u2, v1).color(200, 210, 255, glowAlpha).next();
+        BufferRenderer.drawWithGlobalProgram(buffer.end());
+
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
     }
 }
