@@ -2,7 +2,9 @@ package dev.hackfire.aetherlux;
 
 import dev.hackfire.aetherlux.render.*;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.DimensionRenderingRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,20 +24,35 @@ public class AetherluxClient implements ClientModInitializer {
     public void onInitializeClient() {
         LOGGER.info("Aetherlux initializing...");
 
-        // Custom sky (stars, galaxies, comets + sun/moon)
+        // Custom sky + sun/moon
         DimensionRenderingRegistry.registerSkyRenderer(World.OVERWORLD, context -> {
             SKY_RENDERER.render(context);
 
-            // Also render improved sun & moon
             var matrices = context.matrixStack();
             if (matrices != null) {
                 CELESTIAL.render(matrices, context.tickDelta());
             }
         });
 
-        // Default to Performance preset for weak devices (Redmi Note 12s)
+        // Default to Performance preset
         SHADOWS.setQuality(ShadowMap.Quality.PERFORMANCE);
 
-        LOGGER.info("Aetherlux ready — Sky + Sun/Moon + Shadows active");
+        // Tick water + lightning
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            float delta = 1.0f; // approximate
+            WATER.tick(delta);
+            LIGHTNING.tick(delta);
+        });
+
+        // Render lightning flash at the end of the world render
+        WorldRenderEvents.END.register(context -> {
+            var matrices = context.matrixStack();
+            if (matrices != null) {
+                LIGHTNING.renderFlash(matrices);
+                SHADOWS.applySoftShadows(matrices, context.tickDelta());
+            }
+        });
+
+        LOGGER.info("Aetherlux ready — Sky, Sun/Moon, Shadows, Water, Lightning active");
     }
 }
