@@ -31,11 +31,9 @@ public class AetherluxClient implements ClientModInitializer {
 
         AutoConfig.register(AetherluxConfig.class, GsonConfigSerializer::new);
         CONFIG = AutoConfig.getConfigHolder(AetherluxConfig.class).getConfig();
-
-        // Apply Performance preset defaults on first run feel
         applyConfig();
 
-        // Sky + Sun/Moon (completely skipped when disabled)
+        // Sky + Sun/Moon
         DimensionRenderingRegistry.registerSkyRenderer(World.OVERWORLD, context -> {
             if (CONFIG == null || !CONFIG.customSky) return;
 
@@ -49,43 +47,22 @@ public class AetherluxClient implements ClientModInitializer {
             }
         });
 
-        // Lightweight tick (only what is enabled)
+        // Tick
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (CONFIG == null) return;
-
-            if (CONFIG.waterEffects) {
-                WATER.tick(1.0f);
-            }
-            if (CONFIG.lightningFlash) {
-                LIGHTNING.tick(1.0f);
-            }
+            if (CONFIG.waterEffects) WATER.tick(1.0f);
+            if (CONFIG.lightningFlash) LIGHTNING.tick(1.0f);
         });
 
-        // End-of-frame effects with early outs
+        // End of frame
         WorldRenderEvents.END.register(context -> {
             if (CONFIG == null) return;
-
             var matrices = context.matrixStack();
             if (matrices == null) return;
 
-            if (CONFIG.lightningFlash) {
-                LIGHTNING.renderFlash(matrices);
-            }
-
-            if (SHADOWS.isEnabled()) {
-                SHADOWS.applySoftShadows(matrices, context.tickDelta());
-            }
-
-            if (CONFIG.godRays && GOD_RAYS.isEnabled()) {
-                GOD_RAYS.render(0.0f);
-            }
-        });
-
-        // Listen for config changes
-        AutoConfig.getConfigHolder(AetherluxConfig.class).registerSaveListener((holder, config) -> {
-            CONFIG = config;
-            applyConfig();
-            return me.shedaniel.autoconfig.ConfigData.NO_ERROR;
+            if (CONFIG.lightningFlash) LIGHTNING.renderFlash(matrices);
+            if (SHADOWS.isEnabled()) SHADOWS.applySoftShadows(matrices, context.tickDelta());
+            if (CONFIG.godRays && GOD_RAYS.isEnabled()) GOD_RAYS.render(0.0f);
         });
 
         LOGGER.info("Aetherlux ready — Performance preset active");
@@ -94,28 +71,22 @@ public class AetherluxClient implements ClientModInitializer {
     public static void applyConfig() {
         if (CONFIG == null) return;
 
-        // Sky
         SKY_RENDERER.showMilkyWay = CONFIG.milkyWay;
         SKY_RENDERER.showAndromeda = CONFIG.andromeda;
         SKY_RENDERER.showComets = CONFIG.comets;
 
-        // Celestial
         CELESTIAL.improvedSun = CONFIG.improvedSun;
         CELESTIAL.improvedMoon = CONFIG.improvedMoon;
         CELESTIAL.sunGlowIntensity = CONFIG.sunGlowPercent / 100f;
 
-        // Shadows
         SHADOWS.setQuality(CONFIG.shadowQuality);
 
-        // Water
         WATER.enabled = CONFIG.waterEffects;
         WATER.betterUnderwater = CONFIG.betterUnderwater;
 
-        // Lightning
         LIGHTNING.enabled = CONFIG.lightningFlash;
         LIGHTNING.screenFlash = CONFIG.lightningFlash;
 
-        // God Rays
         GOD_RAYS.setEnabled(CONFIG.godRays);
         GOD_RAYS.setIntensity(CONFIG.godRayIntensityPercent / 100f);
     }
