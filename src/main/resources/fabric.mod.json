@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "id": "luxium",
+  "version": "${version}",
+  "name": "Luxium",
+  "description": "High-performance visual mod: stunning night skies, galaxies, black holes, god rays, soft low-res shadows and advanced lighting. Near-vanilla performance.",
+  "authors": [
+    "H1ckF1re"
+  ],
+  "contact": {
+    "homepage": "https://github.com/hackfireoffical/Luxium",
+    "sources": "https://github.com/hackfireoffical/Luxium"
+  },
+  "license": "MIT",
+  "icon": "assets/luxium/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "dev.hackfire.luxium.LuxiumClient"
+    ]
+  },
+  "mixins": [
+    "luxium.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}
