@@ -28,7 +28,7 @@ public class AetherluxConfig implements ConfigData {
 
     @ConfigEntry.Category("sky")
     @ConfigEntry.BoundedDiscrete(min = 50, max = 150)
-    public int starDensityPercent = 100;
+    public int starDensityPercent = 90;
 
     // === Celestial ===
     @ConfigEntry.Category("celestial")
@@ -39,7 +39,7 @@ public class AetherluxConfig implements ConfigData {
 
     @ConfigEntry.Category("celestial")
     @ConfigEntry.BoundedDiscrete(min = 0, max = 100)
-    public int sunGlowPercent = 75;
+    public int sunGlowPercent = 65;
 
     // === Shadows ===
     @ConfigEntry.Category("shadows")
@@ -63,7 +63,7 @@ public class AetherluxConfig implements ConfigData {
 
     @ConfigEntry.Category("godrays")
     @ConfigEntry.BoundedDiscrete(min = 0, max = 100)
-    public int godRayIntensityPercent = 55;
+    public int godRayIntensityPercent = 45;
 
     public enum QualityPreset {
         PERFORMANCE,
@@ -71,7 +71,6 @@ public class AetherluxConfig implements ConfigData {
         HIGH
     }
 
-    /** Apply the selected quality preset to individual options */
     public void applyPreset() {
         switch (qualityPreset) {
             case PERFORMANCE -> {
