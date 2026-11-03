@@ -29,31 +29,42 @@ public class AetherluxClient implements ClientModInitializer {
     public void onInitializeClient() {
         LOGGER.info("Aetherlux initializing...");
 
-        // Config
         AutoConfig.register(AetherluxConfig.class, GsonConfigSerializer::new);
         CONFIG = AutoConfig.getConfigHolder(AetherluxConfig.class).getConfig();
+
+        // Apply Performance preset defaults on first run feel
         applyConfig();
 
-        // Custom sky + sun/moon
+        // Sky + Sun/Moon (completely skipped when disabled)
         DimensionRenderingRegistry.registerSkyRenderer(World.OVERWORLD, context -> {
-            if (!CONFIG.customSky) return;
+            if (CONFIG == null || !CONFIG.customSky) return;
 
             SKY_RENDERER.render(context);
 
-            var matrices = context.matrixStack();
-            if (matrices != null && (CONFIG.improvedSun || CONFIG.improvedMoon)) {
-                CELESTIAL.render(matrices, context.tickDelta());
+            if (CONFIG.improvedSun || CONFIG.improvedMoon) {
+                var matrices = context.matrixStack();
+                if (matrices != null) {
+                    CELESTIAL.render(matrices, context.tickDelta());
+                }
             }
         });
 
-        // Tick water + lightning
+        // Lightweight tick (only what is enabled)
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            WATER.tick(1.0f);
-            LIGHTNING.tick(1.0f);
+            if (CONFIG == null) return;
+
+            if (CONFIG.waterEffects) {
+                WATER.tick(1.0f);
+            }
+            if (CONFIG.lightningFlash) {
+                LIGHTNING.tick(1.0f);
+            }
         });
 
-        // End-of-frame effects
+        // End-of-frame effects with early outs
         WorldRenderEvents.END.register(context -> {
+            if (CONFIG == null) return;
+
             var matrices = context.matrixStack();
             if (matrices == null) return;
 
@@ -61,17 +72,25 @@ public class AetherluxClient implements ClientModInitializer {
                 LIGHTNING.renderFlash(matrices);
             }
 
-            SHADOWS.applySoftShadows(matrices, context.tickDelta());
+            if (SHADOWS.isEnabled()) {
+                SHADOWS.applySoftShadows(matrices, context.tickDelta());
+            }
 
-            if (CONFIG.godRays) {
-                GOD_RAYS.render(0.0f); // angle filled later
+            if (CONFIG.godRays && GOD_RAYS.isEnabled()) {
+                GOD_RAYS.render(0.0f);
             }
         });
 
-        LOGGER.info("Aetherlux ready — Config screen available in Mod Menu");
+        // Listen for config changes
+        AutoConfig.getConfigHolder(AetherluxConfig.class).registerSaveListener((holder, config) -> {
+            CONFIG = config;
+            applyConfig();
+            return me.shedaniel.autoconfig.ConfigData.NO_ERROR;
+        });
+
+        LOGGER.info("Aetherlux ready — Performance preset active");
     }
 
-    /** Call this after the user changes settings */
     public static void applyConfig() {
         if (CONFIG == null) return;
 
