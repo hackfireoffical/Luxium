@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "luxium",
+  "id": "aetherlux",
   "version": "${version}",
-  "name": "Luxium",
-  "description": "High-performance visual mod: stunning night skies, galaxies, black holes, god rays, soft low-res shadows and advanced lighting. Aimed at stable 60 FPS on weak devices.",
+  "name": "Aetherlux",
+  "description": "High-performance visual mod: stunning night skies, galaxies, comets, god rays and soft low-res shadows. Aimed at stable 60 FPS on weak devices.",
   "authors": [
     "H1ckF1re"
   ],
@@ -12,15 +12,15 @@
     "sources": "https://github.com/hackfireoffical/Luxium"
   },
   "license": "MIT",
-  "icon": "assets/luxium/icon.png",
+  "icon": "assets/aetherlux/icon.png",
   "environment": "client",
   "entrypoints": {
     "client": [
-      "dev.hackfire.luxium.LuxiumClient"
+      "dev.hackfire.aetherlux.AetherluxClient"
     ]
   },
   "mixins": [
-    "luxium.mixins.json"
+    "aetherlux.mixins.json"
   ],
   "depends": {
     "fabricloader": ">=0.14.0",
