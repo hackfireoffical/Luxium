@@ -42,16 +42,23 @@ We can still ship GLSL shaders *inside* the mod for the heavy visual lifting.
 
 ## Current Status
 
-🚧 **Early scaffolding** – repository is ready for development.
+**First real sky version is in!**
+
+- Dense procedural star field
+- Large Milky Way band (needs texture)
+- Smaller tilted Andromeda (needs texture)
+- Bright blue-white comets with trails
 
 ### Roadmap
 
 - [x] Repository + basic Fabric project structure
-- [x] SkyRenderer design locked to target look (dense stars + big Milky Way + small Andromeda + bright comets)
-- [ ] Implement custom sky renderer
+- [x] SkyRenderer design locked to target look
+- [x] First custom sky implementation (stars + Milky Way + Andromeda + comets)
+- [ ] Add real galaxy textures
+- [ ] Improve sky gradient & atmospheric scattering
 - [ ] Low-res cascaded shadow maps with soft filtering
 - [ ] God rays / volumetric light shafts
-- [ ] Improved moon & sun + atmospheric scattering
+- [ ] Improved moon & sun
 - [ ] Config screen (ModMenu + Cloth Config)
 - [ ] Performance-first presets
 
@@ -63,9 +70,18 @@ We can still ship GLSL shaders *inside* the mod for the heavy visual lifting.
 
 The built jar will be in `build/libs/`.
 
+### Sky textures
+
+Drop these into `src/main/resources/assets/luxium/textures/sky/`:
+
+- `milky_way.png` (large band)
+- `andromeda.png` (smaller galaxy)
+
+Until then, stars and comets still work.
+
 ## Contributing
 
-This is the starting point. Issues and PRs are welcome once the core rendering skeleton lands.
+This is the starting point. Issues and PRs are welcome.
 
 ---
 
