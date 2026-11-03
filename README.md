@@ -2,36 +2,36 @@
 
 **Stunning visuals. Near-vanilla performance.**
 
-High-performance client-side visual mod for Minecraft 1.20.1 (Fabric).  
-Target: **stable 60 FPS on Redmi Note 12s**.
+High-performance client-side visual mod for **Minecraft 1.20.1 (Fabric)**.  
+Built first for **stable 60 FPS on Redmi Note 12s** (Helio G88 / Mali-G52).
 
-## Focus Areas
+## Features
 
-| System              | Status          | Goal                                      |
-|---------------------|-----------------|-------------------------------------------|
-| Night Sky           | ✅ Working      | Dense stars, big Milky Way, Andromeda, comets |
-| Sun & Moon          | ✅ Working      | Soft sun glow + detailed moon             |
-| Shadows             | ✅ Working      | Low-res soft shadows                      |
-| Water               | ✅ Working      | Better underwater fog + surface tint      |
-| Lightning           | ✅ Working      | Soft screen flash + storm ambient         |
-| God Rays            | ✅ Working      | Cheap light shafts                        |
-| Config Screen       | ✅ Working      | Mod Menu + Cloth Config                   |
+| System        | Status | Description                                      |
+|---------------|--------|--------------------------------------------------|
+| Night Sky     | ✅     | Dense stars, Milky Way, Andromeda, comets        |
+| Sun & Moon    | ✅     | Soft sun glow + detailed moon                    |
+| Shadows       | ✅     | Low-res soft shadows                             |
+| Water         | ✅     | Better underwater fog + surface tint             |
+| Lightning     | ✅     | Soft screen flash                                |
+| God Rays      | ✅     | Cheap light shafts                               |
+| Config Screen | ✅     | Mod Menu + Cloth Config + quality presets        |
+
+## Performance Defaults (Redmi Note 12s)
+
+- **Performance** preset enabled by default
+- 1300 stars (static buffer)
+- Max 2 comets
+- Low-res shadows
+- All effects have early-outs when disabled
+- Sky effects fully skipped during daytime
 
 ## Config
 
-Install **Mod Menu** + **Cloth Config**.  
-Then open: **Mods → Aetherlux → Config**
+1. Install **Mod Menu** and **Cloth Config**
+2. Mods → **Aetherlux** → Config
 
-You can toggle every feature and choose a quality preset:
-- **Performance** (default – best for Redmi Note 12s)
-- **Balanced**
-- **High**
-
-## Performance Philosophy
-
-- Low resolution techniques + smart filtering
-- Features can be fully disabled
-- Zero cost during daytime for sky effects
+Presets: `Performance` · `Balanced` · `High`
 
 ## Building
 
@@ -39,8 +39,7 @@ You can toggle every feature and choose a quality preset:
 gradle build
 ```
 
-GitHub Actions builds automatically on every push.  
-Artifact: `aetherlux-1.20.1`
+GitHub Actions builds on every push → artifact `aetherlux-1.20.1`
 
 ## License
 
