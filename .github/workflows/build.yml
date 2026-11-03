@@ -22,14 +22,13 @@ jobs:
           java-version: '17'
           cache: gradle
 
-      - name: Setup Gradle
+      - name: Setup Gradle 8.8
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.8'
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Build with Gradle Wrapper
-        run: ./gradlew build --no-daemon
+      - name: Build with Gradle
+        run: gradle build --no-daemon
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
