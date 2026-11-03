@@ -7,7 +7,6 @@ import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexBuffer;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
@@ -30,13 +29,22 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
     private static final Identifier MILKY_WAY = new Identifier("aetherlux", "textures/sky/milky_way.png");
     private static final Identifier ANDROMEDA = new Identifier("aetherlux", "textures/sky/andromeda.png");
 
-    private static final int MAX_STARS = 1300;
+    private static final int MAX_STARS = 1200;
     private static final int MAX_COMETS = 2;
     private static final float COMET_SPAWN_CHANCE = 0.0028f;
 
     private final List<Comet> comets = new ArrayList<>(MAX_COMETS);
+
+    // Precomputed star data (built once)
+    private float[] starX;
+    private float[] starY;
+    private float[] starZ;
+    private float[] starSize;
+    private int[] starR;
+    private int[] starG;
+    private int[] starB;
+    private int[] starA;
     private boolean starsBuilt = false;
-    private VertexBuffer starBuffer;
 
     public boolean showMilkyWay = true;
     public boolean showAndromeda = true;
@@ -77,9 +85,9 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
         matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(22.0f));
         matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-38.0f));
 
+        RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
         RenderSystem.setShaderTexture(0, MILKY_WAY);
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.48f * milkyWayBrightness);
-        RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
 
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         BufferBuilder buffer = Tessellator.getInstance().getBuffer();
@@ -103,9 +111,9 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
         matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-32.0f));
         matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(22.0f));
 
+        RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
         RenderSystem.setShaderTexture(0, ANDROMEDA);
         RenderSystem.setShaderColor(0.92f, 0.88f, 1.0f, 0.55f);
-        RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
 
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         BufferBuilder buffer = Tessellator.getInstance().getBuffer();
@@ -127,7 +135,6 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
             buildStars();
             starsBuilt = true;
         }
-        if (starBuffer == null) return;
 
         matrices.push();
         float angle = (MinecraftClient.getInstance().world.getTime() + tickDelta) * 0.007f;
@@ -136,24 +143,43 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.88f);
 
-        starBuffer.bind();
-        starBuffer.draw(
-                matrices.peek().getPositionMatrix(),
-                RenderSystem.getProjectionMatrix(),
-                GameRenderer.getPositionColorProgram()
-        );
-        VertexBuffer.unbind();
+        Matrix4f matrix = matrices.peek().getPositionMatrix();
+        BufferBuilder buffer = Tessellator.getInstance().getBuffer();
+        buffer.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
 
+        for (int i = 0; i < starX.length; i++) {
+            float px = starX[i];
+            float py = starY[i];
+            float pz = starZ[i];
+            float s = starSize[i];
+            int r = starR[i];
+            int g = starG[i];
+            int b = starB[i];
+            int a = starA[i];
+
+            buffer.vertex(matrix, px - s, py - s, pz).color(r, g, b, a).next();
+            buffer.vertex(matrix, px + s, py - s, pz).color(r, g, b, a).next();
+            buffer.vertex(matrix, px + s, py + s, pz).color(r, g, b, a).next();
+            buffer.vertex(matrix, px - s, py + s, pz).color(r, g, b, a).next();
+        }
+
+        BufferRenderer.drawWithGlobalProgram(buffer.end());
         matrices.pop();
     }
 
     private void buildStars() {
-        BufferBuilder buffer = Tessellator.getInstance().getBuffer();
-        buffer.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-
         Random random = Random.create(10842L);
-        int created = 0;
 
+        List<Float> xs = new ArrayList<>(MAX_STARS);
+        List<Float> ys = new ArrayList<>(MAX_STARS);
+        List<Float> zs = new ArrayList<>(MAX_STARS);
+        List<Float> sizes = new ArrayList<>(MAX_STARS);
+        List<Integer> rs = new ArrayList<>(MAX_STARS);
+        List<Integer> gs = new ArrayList<>(MAX_STARS);
+        List<Integer> bs = new ArrayList<>(MAX_STARS);
+        List<Integer> as = new ArrayList<>(MAX_STARS);
+
+        int created = 0;
         while (created < MAX_STARS) {
             double x = random.nextDouble() * 2.0 - 1.0;
             double y = random.nextDouble() * 2.0 - 1.0;
@@ -165,28 +191,38 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
             double dist = Math.sqrt(distSq);
             x /= dist; y /= dist; z /= dist;
 
-            float size = 0.10f + random.nextFloat() * 0.18f;
-            float px = (float) (x * 100.0);
-            float py = (float) (y * 100.0);
-            float pz = (float) (z * 100.0);
-
-            int r = 190 + random.nextInt(45);
-            int g = 195 + random.nextInt(40);
-            int b = 220 + random.nextInt(30);
-            int a = 150 + random.nextInt(75);
-
-            buffer.vertex(px - size, py - size, pz).color(r, g, b, a).next();
-            buffer.vertex(px + size, py - size, pz).color(r, g, b, a).next();
-            buffer.vertex(px + size, py + size, pz).color(r, g, b, a).next();
-            buffer.vertex(px - size, py + size, pz).color(r, g, b, a).next();
+            xs.add((float) (x * 100.0));
+            ys.add((float) (y * 100.0));
+            zs.add((float) (z * 100.0));
+            sizes.add(0.10f + random.nextFloat() * 0.18f);
+            rs.add(190 + random.nextInt(45));
+            gs.add(195 + random.nextInt(40));
+            bs.add(220 + random.nextInt(30));
+            as.add(150 + random.nextInt(75));
 
             created++;
         }
 
-        starBuffer = new VertexBuffer(VertexBuffer.Usage.STATIC);
-        starBuffer.bind();
-        starBuffer.upload(buffer.end());
-        VertexBuffer.unbind();
+        int n = xs.size();
+        starX = new float[n];
+        starY = new float[n];
+        starZ = new float[n];
+        starSize = new float[n];
+        starR = new int[n];
+        starG = new int[n];
+        starB = new int[n];
+        starA = new int[n];
+
+        for (int i = 0; i < n; i++) {
+            starX[i] = xs.get(i);
+            starY[i] = ys.get(i);
+            starZ[i] = zs.get(i);
+            starSize[i] = sizes.get(i);
+            starR[i] = rs.get(i);
+            starG[i] = gs.get(i);
+            starB[i] = bs.get(i);
+            starA[i] = as.get(i);
+        }
     }
 
     private void updateAndRenderComets(MatrixStack matrices, float tickDelta) {
@@ -212,10 +248,6 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
     }
 
     public void reload() {
-        if (starBuffer != null) {
-            starBuffer.close();
-            starBuffer = null;
-        }
         starsBuilt = false;
         comets.clear();
     }
