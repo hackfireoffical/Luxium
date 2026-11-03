@@ -11,7 +11,6 @@ public class AetherluxClient implements ClientModInitializer {
     public static final String MOD_ID = "aetherlux";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-    // Core systems
     public static final SkyRenderer SKY_RENDERER = new SkyRenderer();
     public static final CelestialRenderer CELESTIAL = new CelestialRenderer();
     public static final ShadowMap SHADOWS = new ShadowMap();
@@ -23,12 +22,20 @@ public class AetherluxClient implements ClientModInitializer {
     public void onInitializeClient() {
         LOGGER.info("Aetherlux initializing...");
 
-        // Custom sky (stars, Milky Way, Andromeda, comets)
-        DimensionRenderingRegistry.registerSkyRenderer(World.OVERWORLD, SKY_RENDERER);
+        // Custom sky (stars, galaxies, comets + sun/moon)
+        DimensionRenderingRegistry.registerSkyRenderer(World.OVERWORLD, context -> {
+            SKY_RENDERER.render(context);
 
-        // Default to Performance preset for weak devices
+            // Also render improved sun & moon
+            var matrices = context.matrixStack();
+            if (matrices != null) {
+                CELESTIAL.render(matrices, context.tickDelta());
+            }
+        });
+
+        // Default to Performance preset for weak devices (Redmi Note 12s)
         SHADOWS.setQuality(ShadowMap.Quality.PERFORMANCE);
 
-        LOGGER.info("Aetherlux ready – Sky, Shadows, Water, Lightning systems loaded");
+        LOGGER.info("Aetherlux ready — Sky + Sun/Moon + Shadows active");
     }
 }
