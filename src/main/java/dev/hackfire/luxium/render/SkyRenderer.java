@@ -12,141 +12,125 @@ import net.minecraft.util.math.random.Random;
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
- * Custom sky renderer for Luxium.
+ * Custom sky renderer for Luxium – PERFORMANCE FIRST.
  *
- * Target look:
- * - Deep navy/blue night sky
- * - Extremely dense star field
- * - Large bright Milky Way band
- * - Smaller Andromeda galaxy
- * - Bright glowing comets with long trails
+ * Target device: Redmi Note 12s (Helio G88 / Mali-G52)
+ * Goal: Stable 60 FPS while still looking beautiful.
+ *
+ * Design choices for performance:
+ * - Low star count (1200–1800) using STATIC VertexBuffer (built once)
+ * - Max 3 comets at a time
+ * - Galaxies = only 2 simple textured quads
+ * - No per-frame allocations in hot path
+ * - No complex math every frame
+ * - Stars + galaxies only rendered at night
  */
 public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.DimensionRenderingRegistry.SkyRenderer {
 
     private static final Identifier MILKY_WAY = Identifier.of("luxium", "textures/sky/milky_way.png");
     private static final Identifier ANDROMEDA = Identifier.of("luxium", "textures/sky/andromeda.png");
 
-    private final List<Comet> comets = new ArrayList<>();
+    // === Performance-tuned defaults for Redmi Note 12s ===
+    private static final int MAX_STARS = 1600;          // sweet spot for Mali-G52
+    private static final int MAX_COMETS = 3;            // never more than 3
+    private static final float COMET_SPAWN_CHANCE = 0.004f;
+
+    private final List<Comet> comets = new ArrayList<>(MAX_COMETS);
     private boolean starsBuilt = false;
     private VertexBuffer starBuffer;
 
-    // Config (will be driven by config screen later)
+    // Runtime toggles (config later)
     public boolean showMilkyWay = true;
     public boolean showAndromeda = true;
     public boolean showComets = true;
-    public float starDensity = 1.4f;
-    public float milkyWayBrightness = 1.15f;
-    public float cometFrequency = 0.7f;
+    public float milkyWayBrightness = 1.1f;
 
     @Override
     public void render(WorldRenderContext context) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.world == null) return;
 
-        float tickDelta = context.tickCounter().getTickDelta(false);
-        float timeOfDay = client.world.getTimeOfDay() % 24000;
-        boolean isNight = timeOfDay > 13000 && timeOfDay < 23000;
-
-        // Only do the full custom night sky at night for now
-        if (!isNight) {
-            // Let vanilla handle day sky for the moment
-            return;
+        // Fast night check
+        long time = client.world.getTimeOfDay() % 24000L;
+        if (time < 13000L || time > 23000L) {
+            return; // day → let vanilla handle everything
         }
 
         MatrixStack matrices = context.matrixStack();
         if (matrices == null) return;
 
+        float tickDelta = context.tickCounter().getTickDelta(false);
+
         RenderSystem.depthMask(false);
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
-        // 1. Deep blue sky disc (simple for now)
-        renderDeepBlueSky(matrices);
-
-        // 2. Large Milky Way
+        // Order matters for performance + looks
         if (showMilkyWay) {
-            renderMilkyWay(matrices, tickDelta);
+            renderMilkyWay(matrices);
         }
-
-        // 3. Smaller Andromeda
         if (showAndromeda) {
-            renderAndromeda(matrices, tickDelta);
+            renderAndromeda(matrices);
         }
 
-        // 4. Dense stars
         renderStars(matrices, tickDelta);
 
-        // 5. Comets
         if (showComets) {
             updateAndRenderComets(matrices, tickDelta);
         }
 
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
         RenderSystem.depthMask(true);
         RenderSystem.disableBlend();
     }
 
-    private void renderDeepBlueSky(MatrixStack matrices) {
-        // Very simple solid deep blue for now – will be replaced with proper gradient later
-        RenderSystem.setShaderColor(0.02f, 0.03f, 0.12f, 1.0f);
-        // We intentionally leave most of the sky to vanilla + our overlays for performance
-        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-    }
-
-    private void renderMilkyWay(MatrixStack matrices, float tickDelta) {
+    private void renderMilkyWay(MatrixStack matrices) {
         matrices.push();
+        matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(22.0f));
+        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-38.0f));
 
-        // Rotate the band so it looks like a real Milky Way
-        matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(25.0f));
-        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-40.0f));
-
-        // Large textured band
         RenderSystem.setShaderTexture(0, MILKY_WAY);
-        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.55f * milkyWayBrightness);
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.50f * milkyWayBrightness);
 
         Matrix4f matrix = matrices.peek().getPositionMatrix();
-        Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+        BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
 
-        float size = 140.0f;
-        // Simple large quad stretched into a band
-        buffer.vertex(matrix, -size * 2.2f, -size * 0.35f, -100.0f).texture(0.0f, 0.0f).color(255, 255, 255, 180);
-        buffer.vertex(matrix,  size * 2.2f, -size * 0.35f, -100.0f).texture(1.0f, 0.0f).color(255, 255, 255, 180);
-        buffer.vertex(matrix,  size * 2.2f,  size * 0.35f, -100.0f).texture(1.0f, 1.0f).color(255, 255, 255, 180);
-        buffer.vertex(matrix, -size * 2.2f,  size * 0.35f, -100.0f).texture(0.0f, 1.0f).color(255, 255, 255, 180);
+        float w = 290.0f;
+        float h = 48.0f;
+
+        buffer.vertex(matrix, -w, -h, -100.0f).texture(0.0f, 0.0f).color(255, 255, 255, 170);
+        buffer.vertex(matrix,  w, -h, -100.0f).texture(1.0f, 0.0f).color(255, 255, 255, 170);
+        buffer.vertex(matrix,  w,  h, -100.0f).texture(1.0f, 1.0f).color(255, 255, 255, 170);
+        buffer.vertex(matrix, -w,  h, -100.0f).texture(0.0f, 1.0f).color(255, 255, 255, 170);
 
         BufferRenderer.drawWithGlobalProgram(buffer.end());
-
-        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
         matrices.pop();
     }
 
-    private void renderAndromeda(MatrixStack matrices, float tickDelta) {
+    private void renderAndromeda(MatrixStack matrices) {
         matrices.push();
-
-        // Position Andromeda in a different part of the sky
-        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(130.0f));
-        matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-35.0f));
-        matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(25.0f)); // tilt
+        matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(125.0f));
+        matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-32.0f));
+        matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(22.0f));
 
         RenderSystem.setShaderTexture(0, ANDROMEDA);
-        RenderSystem.setShaderColor(0.9f, 0.85f, 1.0f, 0.65f);
+        RenderSystem.setShaderColor(0.92f, 0.88f, 1.0f, 0.60f);
 
         Matrix4f matrix = matrices.peek().getPositionMatrix();
-        Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+        BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
 
-        float size = 28.0f; // much smaller than Milky Way
-        buffer.vertex(matrix, -size, -size * 0.55f, -100.0f).texture(0.0f, 0.0f).color(220, 210, 255, 160);
-        buffer.vertex(matrix,  size, -size * 0.55f, -100.0f).texture(1.0f, 0.0f).color(220, 210, 255, 160);
-        buffer.vertex(matrix,  size,  size * 0.55f, -100.0f).texture(1.0f, 1.0f).color(220, 210, 255, 160);
-        buffer.vertex(matrix, -size,  size * 0.55f, -100.0f).texture(0.0f, 1.0f).color(220, 210, 255, 160);
+        float size = 26.0f;
+
+        buffer.vertex(matrix, -size, -size * 0.5f, -100.0f).texture(0.0f, 0.0f).color(220, 210, 255, 155);
+        buffer.vertex(matrix,  size, -size * 0.5f, -100.0f).texture(1.0f, 0.0f).color(220, 210, 255, 155);
+        buffer.vertex(matrix,  size,  size * 0.5f, -100.0f).texture(1.0f, 1.0f).color(220, 210, 255, 155);
+        buffer.vertex(matrix, -size,  size * 0.5f, -100.0f).texture(0.0f, 1.0f).color(220, 210, 255, 155);
 
         BufferRenderer.drawWithGlobalProgram(buffer.end());
-
-        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
         matrices.pop();
     }
 
@@ -155,60 +139,65 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
             buildStars();
             starsBuilt = true;
         }
-
         if (starBuffer == null) return;
 
         matrices.push();
-        // Slow rotation of the whole star field
-        float angle = (MinecraftClient.getInstance().world.getTime() + tickDelta) * 0.01f;
+        // Very slow rotation – almost free
+        float angle = (MinecraftClient.getInstance().world.getTime() + tickDelta) * 0.008f;
         matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(angle));
 
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.95f);
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.92f);
 
         starBuffer.bind();
-        starBuffer.draw(matrices.peek().getPositionMatrix(), RenderSystem.getProjectionMatrix(), GameRenderer.getPositionColorProgram());
+        starBuffer.draw(
+                matrices.peek().getPositionMatrix(),
+                RenderSystem.getProjectionMatrix(),
+                GameRenderer.getPositionColorProgram()
+        );
         VertexBuffer.unbind();
 
-        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
         matrices.pop();
     }
 
     private void buildStars() {
-        Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+        BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+        Random random = Random.create(10842L);
 
-        Random random = Random.create(10842L); // fixed seed for consistent sky
-        int starCount = (int) (3500 * starDensity);
-
-        for (int i = 0; i < starCount; i++) {
+        int created = 0;
+        while (created < MAX_STARS) {
             double x = random.nextDouble() * 2.0 - 1.0;
             double y = random.nextDouble() * 2.0 - 1.0;
             double z = random.nextDouble() * 2.0 - 1.0;
-            double dist = Math.sqrt(x * x + y * y + z * z);
-            if (dist < 0.01 || dist > 1.0) continue;
+            double distSq = x * x + y * y + z * z;
 
+            if (distSq < 0.05 || distSq > 1.0) continue;
+
+            double dist = Math.sqrt(distSq);
             x /= dist;
             y /= dist;
             z /= dist;
 
-            double size = 0.15 + random.nextDouble() * 0.35;
-            // Project onto a large sphere
-            double px = x * 100.0;
-            double py = y * 100.0;
-            double pz = z * 100.0;
+            // Smaller stars = cheaper + denser look
+            float size = 0.12f + random.nextFloat() * 0.22f;
 
-            // Simple billboard-ish star (axis-aligned for speed)
-            float brightness = 0.6f + random.nextFloat() * 0.4f;
-            int r = (int) (180 + random.nextFloat() * 75);
-            int g = (int) (180 + random.nextFloat() * 75);
-            int b = (int) (200 + random.nextFloat() * 55);
+            float px = (float) (x * 100.0);
+            float py = (float) (y * 100.0);
+            float pz = (float) (z * 100.0);
 
-            // 4 vertices of a small quad facing the camera roughly
-            buffer.vertex((float)(px - size), (float)(py - size), (float)pz).color(r, g, b, (int)(brightness * 255));
-            buffer.vertex((float)(px + size), (float)(py - size), (float)pz).color(r, g, b, (int)(brightness * 255));
-            buffer.vertex((float)(px + size), (float)(py + size), (float)pz).color(r, g, b, (int)(brightness * 255));
-            buffer.vertex((float)(px - size), (float)(py + size), (float)pz).color(r, g, b, (int)(brightness * 255));
+            // Slight color variation (cool white → soft blue)
+            int r = 190 + random.nextInt(50);
+            int g = 195 + random.nextInt(45);
+            int b = 220 + random.nextInt(35);
+            int a = 160 + random.nextInt(80);
+
+            // Tiny axis-aligned quad (very cheap)
+            buffer.vertex(px - size, py - size, pz).color(r, g, b, a);
+            buffer.vertex(px + size, py - size, pz).color(r, g, b, a);
+            buffer.vertex(px + size, py + size, pz).color(r, g, b, a);
+            buffer.vertex(px - size, py + size, pz).color(r, g, b, a);
+
+            created++;
         }
 
         starBuffer = new VertexBuffer(VertexBuffer.Usage.STATIC);
@@ -218,26 +207,27 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
     }
 
     private void updateAndRenderComets(MatrixStack matrices, float tickDelta) {
-        // Spawn new comets occasionally
-        if (MinecraftClient.getInstance().world.random.nextFloat() < 0.008f * cometFrequency) {
-            if (comets.size() < 6) {
-                comets.add(new Comet());
-            }
+        // Spawn
+        if (comets.size() < MAX_COMETS &&
+                MinecraftClient.getInstance().world.random.nextFloat() < COMET_SPAWN_CHANCE) {
+            comets.add(new Comet());
         }
+
+        if (comets.isEmpty()) return;
 
         matrices.push();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
 
-        List<Comet> toRemove = new ArrayList<>();
-        for (Comet comet : comets) {
-            comet.tick(tickDelta);
-            if (comet.isDead()) {
-                toRemove.add(comet);
-                continue;
+        Iterator<Comet> it = comets.iterator();
+        while (it.hasNext()) {
+            Comet c = it.next();
+            c.tick(tickDelta);
+            if (c.isDead()) {
+                it.remove();
+            } else {
+                c.render(matrices);
             }
-            comet.render(matrices);
         }
-        comets.removeAll(toRemove);
 
         matrices.pop();
     }
@@ -251,7 +241,7 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
         comets.clear();
     }
 
-    // Simple comet
+    // === Ultra-light comet ===
     private static class Comet {
         float x, y, z;
         float vx, vy, vz;
@@ -261,18 +251,17 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
 
         Comet() {
             Random r = Random.create();
-            // Start from one side of the sky
-            x = (r.nextFloat() - 0.5f) * 180f;
-            y = 40f + r.nextFloat() * 60f;
-            z = -80f - r.nextFloat() * 40f;
+            x = (r.nextFloat() - 0.5f) * 160f;
+            y = 50f + r.nextFloat() * 50f;
+            z = -90f - r.nextFloat() * 30f;
 
-            vx = (r.nextFloat() - 0.3f) * 1.8f;
-            vy = -0.4f - r.nextFloat() * 0.8f;
-            vz = 0.6f + r.nextFloat() * 0.9f;
+            vx = 0.9f + r.nextFloat() * 1.4f;
+            vy = -0.5f - r.nextFloat() * 0.7f;
+            vz = 0.5f + r.nextFloat() * 0.8f;
 
-            maxLife = 80f + r.nextFloat() * 60f;
+            maxLife = 70f + r.nextFloat() * 50f;
             life = maxLife;
-            size = 1.8f + r.nextFloat() * 2.2f;
+            size = 1.6f + r.nextFloat() * 1.8f;
         }
 
         void tick(float delta) {
@@ -283,30 +272,33 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
         }
 
         boolean isDead() {
-            return life <= 0;
+            return life <= 0f;
         }
 
         void render(MatrixStack matrices) {
             float alpha = MathHelper.clamp(life / maxLife, 0f, 1f);
+            int a = (int) (alpha * 240);
+
             Matrix4f matrix = matrices.peek().getPositionMatrix();
+            BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
 
-            Tessellator tessellator = Tessellator.getInstance();
-            BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-
-            // Bright head
+            // Bright head (small)
             float s = size;
-            int a = (int) (alpha * 255);
-            buffer.vertex(matrix, x - s, y - s, z).color(180, 220, 255, a);
-            buffer.vertex(matrix, x + s, y - s, z).color(180, 220, 255, a);
-            buffer.vertex(matrix, x + s, y + s, z).color(180, 220, 255, a);
-            buffer.vertex(matrix, x - s, y + s, z).color(180, 220, 255, a);
+            buffer.vertex(matrix, x - s, y - s, z).color(200, 230, 255, a);
+            buffer.vertex(matrix, x + s, y - s, z).color(200, 230, 255, a);
+            buffer.vertex(matrix, x + s, y + s, z).color(200, 230, 255, a);
+            buffer.vertex(matrix, x - s, y + s, z).color(200, 230, 255, a);
 
-            // Long glowing trail
-            float trailLen = 28f * alpha;
-            buffer.vertex(matrix, x, y, z).color(100, 180, 255, a);
-            buffer.vertex(matrix, x - vx * trailLen * 0.3f, y - vy * trailLen * 0.3f, z - vz * trailLen * 0.3f).color(80, 150, 255, a / 2);
-            buffer.vertex(matrix, x - vx * trailLen, y - vy * trailLen, z - vz * trailLen).color(40, 100, 220, 0);
-            buffer.vertex(matrix, x - vx * trailLen * 0.5f, y - vy * trailLen * 0.5f, z - vz * trailLen * 0.5f).color(60, 130, 240, a / 3);
+            // Simple long trail (only 1 extra quad)
+            float trail = 22f * alpha;
+            float tx = x - vx * trail;
+            float ty = y - vy * trail;
+            float tz = z - vz * trail;
+
+            buffer.vertex(matrix, x, y, z).color(120, 190, 255, a);
+            buffer.vertex(matrix, x + 0.8f, y, z).color(120, 190, 255, a);
+            buffer.vertex(matrix, tx + 0.4f, ty, tz).color(40, 100, 220, 0);
+            buffer.vertex(matrix, tx, ty, tz).color(40, 100, 220, 0);
 
             BufferRenderer.drawWithGlobalProgram(buffer.end());
         }
