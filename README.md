@@ -2,48 +2,46 @@
 
 **Stunning visuals. Near-vanilla performance.**
 
-High-performance client-side visual mod focused on beautiful night skies while targeting **stable 60 FPS on Redmi Note 12s**.
+High-performance client-side visual mod for Minecraft 1.20.1 (Fabric).  
+Target: **stable 60 FPS on Redmi Note 12s** (Helio G88 / Mali-G52).
 
-## Target
+## Focus Areas
 
-- **Minecraft**: 1.20.1
-- **Loader**: Fabric
-- **Device goal**: Redmi Note 12s (Helio G88 / Mali-G52) → stable 60 FPS
+| System              | Status     | Goal                                      |
+|---------------------|------------|-------------------------------------------|
+| Night Sky           | Implemented | Dense stars, big Milky Way, Andromeda, comets |
+| Sun & Moon          | Scaffolded | Beautiful sun glow + detailed moon        |
+| Shadows             | Scaffolded | Low-res soft shadows (512–1024)           |
+| Water               | Scaffolded | Better color, simple reflections, underwater |
+| Lightning           | Scaffolded | Dramatic bolts + soft screen flash        |
+| God Rays            | Scaffolded | Cheap light shafts                        |
 
-## Features (current)
+## Performance Philosophy
 
-- Dense but cheap star field (1400 stars, static buffer)
-- Large Milky Way band
-- Smaller tilted Andromeda galaxy
-- Bright blue-white comets (max 3)
-- Completely disabled during daytime (zero cost)
+Everything is designed with weak mobile GPUs first:
 
-## Performance Optimizations
+- Low resolution techniques + smart filtering
+- Features can be fully disabled
+- Quality presets: **Performance** (default) / Balanced / High
+- Zero cost during daytime for sky effects
 
-- Only 1400 stars
-- Max 3 comets
-- Static `VertexBuffer` for stars (built once)
-- No per-frame allocations in hot path
-- Galaxies = only 2 simple textured quads
-- Sky rendering fully skipped during day
+## Current Features
+
+- Custom night sky (1400 stars, Milky Way, Andromeda, comets)
+- Low-res soft shadow system (ready for implementation)
+- Improved sun & moon framework
+- Water improvements framework
+- Enhanced lightning framework
+- God rays framework
 
 ## Building
 
-### Locally
 ```bash
 gradle build
 ```
 
-### GitHub Actions
-Every push to `main` automatically builds the mod for **1.20.1 Fabric**.
-
-You can also trigger it manually in the Actions tab.  
-The built jar appears as artifact: **`aetherlux-1.20.1`**
-
-## Project Structure
-
-- `SkyRenderer` – performance-first custom night sky
-- Ready for low-res soft shadows and god rays next
+GitHub Actions automatically builds on every push.  
+Artifact name: `aetherlux-1.20.1`
 
 ## License
 
