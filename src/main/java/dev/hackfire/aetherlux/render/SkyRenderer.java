@@ -3,7 +3,13 @@ package dev.hackfire.aetherlux.render;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.*;
+import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexBuffer;
+import net.minecraft.client.render.VertexFormat;
+import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
@@ -24,8 +30,8 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
     private static final Identifier MILKY_WAY = new Identifier("aetherlux", "textures/sky/milky_way.png");
     private static final Identifier ANDROMEDA = new Identifier("aetherlux", "textures/sky/andromeda.png");
 
-    private static final int MAX_STARS = 1300; // slightly lower = safer on Mali-G52
-    private static final int MAX_COMETS = 2;   // max 2 for performance
+    private static final int MAX_STARS = 1300;
+    private static final int MAX_COMETS = 2;
     private static final float COMET_SPAWN_CHANCE = 0.0028f;
 
     private final List<Comet> comets = new ArrayList<>(MAX_COMETS);
@@ -42,7 +48,6 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.world == null) return;
 
-        // Fast night-only check
         long time = client.world.getTimeOfDay() % 24000L;
         if (time < 13000L || time > 23000L) return;
 
@@ -74,6 +79,7 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
 
         RenderSystem.setShaderTexture(0, MILKY_WAY);
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.48f * milkyWayBrightness);
+        RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
 
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         BufferBuilder buffer = Tessellator.getInstance().getBuffer();
@@ -99,6 +105,7 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
 
         RenderSystem.setShaderTexture(0, ANDROMEDA);
         RenderSystem.setShaderColor(0.92f, 0.88f, 1.0f, 0.55f);
+        RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
 
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         BufferBuilder buffer = Tessellator.getInstance().getBuffer();
