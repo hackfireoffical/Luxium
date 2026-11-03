@@ -1,4 +1,4 @@
-# Luxium
+# Aetherlux
 
 **Stunning visuals. Near-vanilla performance.**
 
@@ -37,10 +37,8 @@ gradle build
 ### GitHub Actions
 Every push to `main` automatically builds the mod for **1.20.1 Fabric**.
 
-You can also trigger it manually:
-**Actions → Build Luxium (1.20.1 Fabric) → Run workflow**
-
-The built jar will appear in the Actions artifacts (`luxium-1.20.1`).
+You can also trigger it manually in the Actions tab.  
+The built jar appears as artifact: **`aetherlux-1.20.1`**
 
 ## Project Structure
 
@@ -53,4 +51,4 @@ MIT
 
 ---
 
-*Luxium – light, redefined. Built for real devices.*
+*Aetherlux – light from the upper sky.*
