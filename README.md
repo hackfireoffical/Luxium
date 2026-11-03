@@ -11,9 +11,9 @@ Target: **stable 60 FPS on Redmi Note 12s**.
 |---------------------|-----------------|-------------------------------------------|
 | Night Sky           | ✅ Working      | Dense stars, big Milky Way, Andromeda, comets |
 | Sun & Moon          | ✅ Working      | Soft sun glow + detailed moon             |
-| Shadows             | ✅ First version| Low-res soft shadows                      |
-| Water               | Scaffolded      | Better color, simple reflections          |
-| Lightning           | Scaffolded      | Dramatic bolts + soft screen flash        |
+| Shadows             | ✅ Working      | Low-res soft shadows                      |
+| Water               | ✅ Working      | Better underwater fog + surface tint      |
+| Lightning           | ✅ Working      | Soft screen flash + storm ambient         |
 | God Rays            | Scaffolded      | Cheap light shafts                        |
 
 ## Performance Philosophy
@@ -30,8 +30,10 @@ Everything is designed with weak mobile GPUs first:
 - Custom night sky (1400 stars, Milky Way, Andromeda, comets)
 - Improved Sun with soft glow
 - Improved Moon with phases + glow
-- Low-res soft shadow system (Performance preset by default)
-- Frameworks ready for water, lightning and god rays
+- Low-res soft shadow system
+- Better underwater fog & water tint
+- Lightning screen flash + ambient storm flashes
+- God rays framework ready
 
 ## Building
 
