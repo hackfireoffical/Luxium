@@ -6,10 +6,22 @@ Luxium is a client-side Minecraft mod that brings cinematic lighting and an othe
 
 ## Vision
 
-- **Night sky**: Beautiful sun & moon, dense galaxies, nebulae, and black holes that feel alive.
-- **Lighting**: Soft god rays, volumetric light shafts, and improved ambient lighting.
-- **Shadows**: Low-resolution soft shadows for huge performance wins while still looking great.
-- **Philosophy**: Looks like a high-end shader pack. Runs close to vanilla.
+### Night Sky (primary focus)
+Inspired by high-end shader screenshots:
+
+- Deep navy/blue night sky (not pure black)
+- Extremely dense star field
+- **Large, bright Milky Way** stretching across the sky
+- **Smaller Andromeda galaxy** visible as a distinct tilted spiral
+- Bright glowing comets / shooting stars with long blue-white trails
+- Later: nebulae, more distant galaxies, black holes
+
+### Lighting & Shadows
+- Soft god rays / volumetric light shafts
+- Low-resolution soft shadows (huge performance win while still looking good)
+- Improved ambient lighting
+
+**Philosophy**: Looks like a high-end shader pack. Runs close to vanilla.
 
 ## Why a mod instead of a pure shader?
 
@@ -35,7 +47,8 @@ We can still ship GLSL shaders *inside* the mod for the heavy visual lifting.
 ### Roadmap
 
 - [x] Repository + basic Fabric project structure
-- [ ] Custom sky renderer (procedural galaxies + black holes)
+- [x] SkyRenderer design locked to target look (dense stars + big Milky Way + small Andromeda + bright comets)
+- [ ] Implement custom sky renderer
 - [ ] Low-res cascaded shadow maps with soft filtering
 - [ ] God rays / volumetric light shafts
 - [ ] Improved moon & sun + atmospheric scattering
