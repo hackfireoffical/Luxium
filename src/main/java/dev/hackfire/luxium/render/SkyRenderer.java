@@ -19,31 +19,30 @@ import java.util.List;
  * Custom sky renderer for Luxium – PERFORMANCE FIRST.
  *
  * Target device: Redmi Note 12s (Helio G88 / Mali-G52)
- * Goal: Stable 60 FPS while still looking beautiful.
+ * Goal: Stable 60 FPS
  *
- * Design choices for performance:
- * - Low star count (1200–1800) using STATIC VertexBuffer (built once)
- * - Max 3 comets at a time
- * - Galaxies = only 2 simple textured quads
- * - No per-frame allocations in hot path
- * - No complex math every frame
- * - Stars + galaxies only rendered at night
+ * Optimizations:
+ * - Only 1400 stars (static buffer, built once)
+ * - Max 2–3 comets
+ * - Galaxies = 2 simple quads
+ * - No allocations in hot path
+ * - Completely disabled during day
+ * - Uses 1.20.1 compatible APIs
  */
 public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.DimensionRenderingRegistry.SkyRenderer {
 
-    private static final Identifier MILKY_WAY = Identifier.of("luxium", "textures/sky/milky_way.png");
-    private static final Identifier ANDROMEDA = Identifier.of("luxium", "textures/sky/andromeda.png");
+    private static final Identifier MILKY_WAY = new Identifier("luxium", "textures/sky/milky_way.png");
+    private static final Identifier ANDROMEDA = new Identifier("luxium", "textures/sky/andromeda.png");
 
-    // === Performance-tuned defaults for Redmi Note 12s ===
-    private static final int MAX_STARS = 1600;          // sweet spot for Mali-G52
-    private static final int MAX_COMETS = 3;            // never more than 3
-    private static final float COMET_SPAWN_CHANCE = 0.004f;
+    // Tuned for Redmi Note 12s
+    private static final int MAX_STARS = 1400;
+    private static final int MAX_COMETS = 3;
+    private static final float COMET_SPAWN_CHANCE = 0.0035f;
 
     private final List<Comet> comets = new ArrayList<>(MAX_COMETS);
     private boolean starsBuilt = false;
     private VertexBuffer starBuffer;
 
-    // Runtime toggles (config later)
     public boolean showMilkyWay = true;
     public boolean showAndromeda = true;
     public boolean showComets = true;
@@ -54,22 +53,20 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.world == null) return;
 
-        // Fast night check
         long time = client.world.getTimeOfDay() % 24000L;
         if (time < 13000L || time > 23000L) {
-            return; // day → let vanilla handle everything
+            return; // day → zero cost
         }
 
         MatrixStack matrices = context.matrixStack();
         if (matrices == null) return;
 
-        float tickDelta = context.tickCounter().getTickDelta(false);
+        float tickDelta = context.tickDelta();
 
         RenderSystem.depthMask(false);
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
 
-        // Order matters for performance + looks
         if (showMilkyWay) {
             renderMilkyWay(matrices);
         }
@@ -97,15 +94,16 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.50f * milkyWayBrightness);
 
         Matrix4f matrix = matrices.peek().getPositionMatrix();
-        BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+        BufferBuilder buffer = Tessellator.getInstance().getBuffer();
+        buffer.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
 
         float w = 290.0f;
         float h = 48.0f;
 
-        buffer.vertex(matrix, -w, -h, -100.0f).texture(0.0f, 0.0f).color(255, 255, 255, 170);
-        buffer.vertex(matrix,  w, -h, -100.0f).texture(1.0f, 0.0f).color(255, 255, 255, 170);
-        buffer.vertex(matrix,  w,  h, -100.0f).texture(1.0f, 1.0f).color(255, 255, 255, 170);
-        buffer.vertex(matrix, -w,  h, -100.0f).texture(0.0f, 1.0f).color(255, 255, 255, 170);
+        buffer.vertex(matrix, -w, -h, -100.0f).texture(0.0f, 0.0f).color(255, 255, 255, 170).next();
+        buffer.vertex(matrix,  w, -h, -100.0f).texture(1.0f, 0.0f).color(255, 255, 255, 170).next();
+        buffer.vertex(matrix,  w,  h, -100.0f).texture(1.0f, 1.0f).color(255, 255, 255, 170).next();
+        buffer.vertex(matrix, -w,  h, -100.0f).texture(0.0f, 1.0f).color(255, 255, 255, 170).next();
 
         BufferRenderer.drawWithGlobalProgram(buffer.end());
         matrices.pop();
@@ -121,14 +119,15 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
         RenderSystem.setShaderColor(0.92f, 0.88f, 1.0f, 0.60f);
 
         Matrix4f matrix = matrices.peek().getPositionMatrix();
-        BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+        BufferBuilder buffer = Tessellator.getInstance().getBuffer();
+        buffer.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
 
         float size = 26.0f;
 
-        buffer.vertex(matrix, -size, -size * 0.5f, -100.0f).texture(0.0f, 0.0f).color(220, 210, 255, 155);
-        buffer.vertex(matrix,  size, -size * 0.5f, -100.0f).texture(1.0f, 0.0f).color(220, 210, 255, 155);
-        buffer.vertex(matrix,  size,  size * 0.5f, -100.0f).texture(1.0f, 1.0f).color(220, 210, 255, 155);
-        buffer.vertex(matrix, -size,  size * 0.5f, -100.0f).texture(0.0f, 1.0f).color(220, 210, 255, 155);
+        buffer.vertex(matrix, -size, -size * 0.5f, -100.0f).texture(0.0f, 0.0f).color(220, 210, 255, 155).next();
+        buffer.vertex(matrix,  size, -size * 0.5f, -100.0f).texture(1.0f, 0.0f).color(220, 210, 255, 155).next();
+        buffer.vertex(matrix,  size,  size * 0.5f, -100.0f).texture(1.0f, 1.0f).color(220, 210, 255, 155).next();
+        buffer.vertex(matrix, -size,  size * 0.5f, -100.0f).texture(0.0f, 1.0f).color(220, 210, 255, 155).next();
 
         BufferRenderer.drawWithGlobalProgram(buffer.end());
         matrices.pop();
@@ -142,12 +141,11 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
         if (starBuffer == null) return;
 
         matrices.push();
-        // Very slow rotation – almost free
         float angle = (MinecraftClient.getInstance().world.getTime() + tickDelta) * 0.008f;
         matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(angle));
 
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.92f);
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.90f);
 
         starBuffer.bind();
         starBuffer.draw(
@@ -161,10 +159,12 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
     }
 
     private void buildStars() {
-        BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-        Random random = Random.create(10842L);
+        BufferBuilder buffer = Tessellator.getInstance().getBuffer();
+        buffer.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
 
+        Random random = Random.create(10842L);
         int created = 0;
+
         while (created < MAX_STARS) {
             double x = random.nextDouble() * 2.0 - 1.0;
             double y = random.nextDouble() * 2.0 - 1.0;
@@ -178,24 +178,20 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
             y /= dist;
             z /= dist;
 
-            // Smaller stars = cheaper + denser look
-            float size = 0.12f + random.nextFloat() * 0.22f;
-
+            float size = 0.11f + random.nextFloat() * 0.20f;
             float px = (float) (x * 100.0);
             float py = (float) (y * 100.0);
             float pz = (float) (z * 100.0);
 
-            // Slight color variation (cool white → soft blue)
             int r = 190 + random.nextInt(50);
             int g = 195 + random.nextInt(45);
             int b = 220 + random.nextInt(35);
-            int a = 160 + random.nextInt(80);
+            int a = 155 + random.nextInt(80);
 
-            // Tiny axis-aligned quad (very cheap)
-            buffer.vertex(px - size, py - size, pz).color(r, g, b, a);
-            buffer.vertex(px + size, py - size, pz).color(r, g, b, a);
-            buffer.vertex(px + size, py + size, pz).color(r, g, b, a);
-            buffer.vertex(px - size, py + size, pz).color(r, g, b, a);
+            buffer.vertex(px - size, py - size, pz).color(r, g, b, a).next();
+            buffer.vertex(px + size, py - size, pz).color(r, g, b, a).next();
+            buffer.vertex(px + size, py + size, pz).color(r, g, b, a).next();
+            buffer.vertex(px - size, py + size, pz).color(r, g, b, a).next();
 
             created++;
         }
@@ -207,7 +203,6 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
     }
 
     private void updateAndRenderComets(MatrixStack matrices, float tickDelta) {
-        // Spawn
         if (comets.size() < MAX_COMETS &&
                 MinecraftClient.getInstance().world.random.nextFloat() < COMET_SPAWN_CHANCE) {
             comets.add(new Comet());
@@ -241,7 +236,6 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
         comets.clear();
     }
 
-    // === Ultra-light comet ===
     private static class Comet {
         float x, y, z;
         float vx, vy, vz;
@@ -259,9 +253,9 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
             vy = -0.5f - r.nextFloat() * 0.7f;
             vz = 0.5f + r.nextFloat() * 0.8f;
 
-            maxLife = 70f + r.nextFloat() * 50f;
+            maxLife = 65f + r.nextFloat() * 45f;
             life = maxLife;
-            size = 1.6f + r.nextFloat() * 1.8f;
+            size = 1.5f + r.nextFloat() * 1.6f;
         }
 
         void tick(float delta) {
@@ -277,28 +271,27 @@ public class SkyRenderer implements net.fabricmc.fabric.api.client.rendering.v1.
 
         void render(MatrixStack matrices) {
             float alpha = MathHelper.clamp(life / maxLife, 0f, 1f);
-            int a = (int) (alpha * 240);
+            int a = (int) (alpha * 230);
 
             Matrix4f matrix = matrices.peek().getPositionMatrix();
-            BufferBuilder buffer = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+            BufferBuilder buffer = Tessellator.getInstance().getBuffer();
+            buffer.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
 
-            // Bright head (small)
             float s = size;
-            buffer.vertex(matrix, x - s, y - s, z).color(200, 230, 255, a);
-            buffer.vertex(matrix, x + s, y - s, z).color(200, 230, 255, a);
-            buffer.vertex(matrix, x + s, y + s, z).color(200, 230, 255, a);
-            buffer.vertex(matrix, x - s, y + s, z).color(200, 230, 255, a);
+            buffer.vertex(matrix, x - s, y - s, z).color(200, 230, 255, a).next();
+            buffer.vertex(matrix, x + s, y - s, z).color(200, 230, 255, a).next();
+            buffer.vertex(matrix, x + s, y + s, z).color(200, 230, 255, a).next();
+            buffer.vertex(matrix, x - s, y + s, z).color(200, 230, 255, a).next();
 
-            // Simple long trail (only 1 extra quad)
-            float trail = 22f * alpha;
+            float trail = 20f * alpha;
             float tx = x - vx * trail;
             float ty = y - vy * trail;
             float tz = z - vz * trail;
 
-            buffer.vertex(matrix, x, y, z).color(120, 190, 255, a);
-            buffer.vertex(matrix, x + 0.8f, y, z).color(120, 190, 255, a);
-            buffer.vertex(matrix, tx + 0.4f, ty, tz).color(40, 100, 220, 0);
-            buffer.vertex(matrix, tx, ty, tz).color(40, 100, 220, 0);
+            buffer.vertex(matrix, x, y, z).color(120, 190, 255, a).next();
+            buffer.vertex(matrix, x + 0.7f, y, z).color(120, 190, 255, a).next();
+            buffer.vertex(matrix, tx + 0.3f, ty, tz).color(40, 100, 220, 0).next();
+            buffer.vertex(matrix, tx, ty, tz).color(40, 100, 220, 0).next();
 
             BufferRenderer.drawWithGlobalProgram(buffer.end());
         }
