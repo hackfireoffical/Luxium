@@ -14,26 +14,24 @@ Target: **stable 60 FPS on Redmi Note 12s**.
 | Shadows             | ✅ Working      | Low-res soft shadows                      |
 | Water               | ✅ Working      | Better underwater fog + surface tint      |
 | Lightning           | ✅ Working      | Soft screen flash + storm ambient         |
-| God Rays            | Scaffolded      | Cheap light shafts                        |
+| God Rays            | ✅ Working      | Cheap light shafts                        |
+| Config Screen       | ✅ Working      | Mod Menu + Cloth Config                   |
+
+## Config
+
+Install **Mod Menu** + **Cloth Config**.  
+Then open: **Mods → Aetherlux → Config**
+
+You can toggle every feature and choose a quality preset:
+- **Performance** (default – best for Redmi Note 12s)
+- **Balanced**
+- **High**
 
 ## Performance Philosophy
 
-Everything is designed with weak mobile GPUs first:
-
 - Low resolution techniques + smart filtering
 - Features can be fully disabled
-- Quality presets: **Performance** (default) / Balanced / High
 - Zero cost during daytime for sky effects
-
-## Current Features
-
-- Custom night sky (1400 stars, Milky Way, Andromeda, comets)
-- Improved Sun with soft glow
-- Improved Moon with phases + glow
-- Low-res soft shadow system
-- Better underwater fog & water tint
-- Lightning screen flash + ambient storm flashes
-- God rays framework ready
 
 ## Building
 
