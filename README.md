@@ -3,18 +3,18 @@
 **Stunning visuals. Near-vanilla performance.**
 
 High-performance client-side visual mod for Minecraft 1.20.1 (Fabric).  
-Target: **stable 60 FPS on Redmi Note 12s** (Helio G88 / Mali-G52).
+Target: **stable 60 FPS on Redmi Note 12s**.
 
 ## Focus Areas
 
-| System              | Status     | Goal                                      |
-|---------------------|------------|-------------------------------------------|
-| Night Sky           | Implemented | Dense stars, big Milky Way, Andromeda, comets |
-| Sun & Moon          | Scaffolded | Beautiful sun glow + detailed moon        |
-| Shadows             | Scaffolded | Low-res soft shadows (512–1024)           |
-| Water               | Scaffolded | Better color, simple reflections, underwater |
-| Lightning           | Scaffolded | Dramatic bolts + soft screen flash        |
-| God Rays            | Scaffolded | Cheap light shafts                        |
+| System              | Status          | Goal                                      |
+|---------------------|-----------------|-------------------------------------------|
+| Night Sky           | ✅ Working      | Dense stars, big Milky Way, Andromeda, comets |
+| Sun & Moon          | ✅ Working      | Soft sun glow + detailed moon             |
+| Shadows             | ✅ First version| Low-res soft shadows                      |
+| Water               | Scaffolded      | Better color, simple reflections          |
+| Lightning           | Scaffolded      | Dramatic bolts + soft screen flash        |
+| God Rays            | Scaffolded      | Cheap light shafts                        |
 
 ## Performance Philosophy
 
@@ -28,11 +28,10 @@ Everything is designed with weak mobile GPUs first:
 ## Current Features
 
 - Custom night sky (1400 stars, Milky Way, Andromeda, comets)
-- Low-res soft shadow system (ready for implementation)
-- Improved sun & moon framework
-- Water improvements framework
-- Enhanced lightning framework
-- God rays framework
+- Improved Sun with soft glow
+- Improved Moon with phases + glow
+- Low-res soft shadow system (Performance preset by default)
+- Frameworks ready for water, lightning and god rays
 
 ## Building
 
@@ -40,8 +39,8 @@ Everything is designed with weak mobile GPUs first:
 gradle build
 ```
 
-GitHub Actions automatically builds on every push.  
-Artifact name: `aetherlux-1.20.1`
+GitHub Actions builds automatically on every push.  
+Artifact: `aetherlux-1.20.1`
 
 ## License
 
